@@ -103,7 +103,7 @@ const fetchCsData = async (url, config, query) => {
           console.error(data);
           reject(data);
         } else {
-          console.log('Contentstack response: ', data);
+          console.log('Contentstack response: ', Object.keys(data));
           resolve(data);
         }
       })
