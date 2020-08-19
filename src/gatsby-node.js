@@ -50,6 +50,7 @@ exports.createSchemaCustomization = async ({
       result.types = result.types.concat(typeDefs);
       createTypes(result.types);
     });
+    console.log('Content types created');
   }
 };
 
@@ -139,12 +140,12 @@ exports.sourceNodes = async ({
     const entryNode = processEntry(contentType, normalizedEntry, createNodeId, createContentDigest, typePrefix);
     createNode(entryNode);
   });
-
+  console.log('Entries normalized');
   syncData.asset_published && syncData.asset_published.forEach((item) => {
     const assetNode = processAsset(item.data, createNodeId, createContentDigest, typePrefix);
     createNode(assetNode);
   });
-
+  console.log('Assets processed');
   function deleteContentstackNodes(item, type) {
     let nodeId = '';
     let node = null;
@@ -197,6 +198,8 @@ exports.sourceNodes = async ({
   const newState = {};
   newState[`${typePrefix.toLowerCase()}-sync-token-${configOptions.api_key}`] = nextSyncToken;
   setPluginStatus(newState);
+
+  console.log('sourceNodes execution over');
 };
 
 

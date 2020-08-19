@@ -81,6 +81,7 @@ exports.createSchemaCustomization = function () {
                 result.types = result.types.concat(typeDefs);
                 createTypes(result.types);
               });
+              console.log('Content types created');
             }
 
           case 10:
@@ -207,11 +208,13 @@ exports.sourceNodes = function () {
               var entryNode = processEntry(contentType, normalizedEntry, createNodeId, createContentDigest, typePrefix);
               createNode(entryNode);
             });
-
+            console.log('Entries normalized');
             syncData.asset_published && syncData.asset_published.forEach(function (item) {
               var assetNode = processAsset(item.data, createNodeId, createContentDigest, typePrefix);
               createNode(assetNode);
             });
+            console.log('Assets processed');
+
 
             // deleting nodes
 
@@ -253,7 +256,9 @@ exports.sourceNodes = function () {
             newState[typePrefix.toLowerCase() + '-sync-token-' + configOptions.api_key] = nextSyncToken;
             setPluginStatus(newState);
 
-          case 31:
+            console.log('sourceNodes execution over');
+
+          case 34:
           case 'end':
             return _context2.stop();
         }

@@ -1,5 +1,9 @@
 'use strict';
 
+var _keys = require('babel-runtime/core-js/object/keys');
+
+var _keys2 = _interopRequireDefault(_keys);
+
 var _regenerator = require('babel-runtime/regenerator');
 
 var _regenerator2 = _interopRequireDefault(_regenerator);
@@ -211,23 +215,30 @@ var fetchCsData = function () {
                 'X-User-Agent': 'contentstack-gatsby-source-plugin-' + version
               }
             };
+
+            console.log('Contentstack headers', option.headers);
             return _context4.abrupt('return', new _promise2.default(function (resolve, reject) {
               fetch(apiUrl, option).then(function (response) {
                 return response.json();
               }).then(function (data) {
                 if (data.error_code) {
+                  var error = (0, _keys2.default)(data);
+                  console.log('Contentstack error: ', error);
                   console.error(data);
                   reject(data);
                 } else {
+                  var _data = (0, _keys2.default)(data);
+                  console.log('Contentstack response: ', _data);
                   resolve(data);
                 }
               }).catch(function (err) {
+                console.log('Contentstack error [reject]: ', err);
                 console.error(err);
                 reject(err);
               });
             }));
 
-          case 9:
+          case 10:
           case 'end':
             return _context4.stop();
         }
