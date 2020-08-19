@@ -94,6 +94,7 @@ const fetchCsData = async (url, config, query) => {
       'X-User-Agent': `contentstack-gatsby-source-plugin-${version}`,
     },
   };
+  console.log('Contentstack headers', option.headers);
   return new Promise((resolve, reject) => {
     fetch(apiUrl, option)
       .then((response) => response.json())
@@ -102,6 +103,7 @@ const fetchCsData = async (url, config, query) => {
           console.error(data);
           reject(data);
         } else {
+          console.log('Contentstack response: ', data);
           resolve(data);
         }
       })
