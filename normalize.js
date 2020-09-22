@@ -425,8 +425,11 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
             if (isGlobalField) {
               isInsideGlobalField = true;
 
-              _type = 'type ' + extendedInterface + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
-              // types.push(type);
+              // Creates a common interface for groups inside global_fields, for backwards compatibility
+              _interface = 'interface ' + extendedInterface + ' @interface ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
+              types.push(_interface);
+
+              _type = 'type ' + newparent + ' implements ' + extendedInterface + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
             } else {
               _type = 'type ' + newparent + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
             }

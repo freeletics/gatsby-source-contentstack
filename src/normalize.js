@@ -400,8 +400,11 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
             if (isGlobalField) {
               isInsideGlobalField = true;
 
-              type = `type ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
-              // types.push(type);
+              // Creates a common interface for groups inside global_fields, for backwards compatibility
+              _interface = `interface ${extendedInterface} @interface ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+              types.push(_interface);
+
+              type = `type ${newparent} implements ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
             } else {
               type = `type ${newparent} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
             }
