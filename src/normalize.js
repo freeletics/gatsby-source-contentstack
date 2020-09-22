@@ -412,11 +412,11 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
               type = `type ${newparent} implements ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
 
               let extendedInterfaceParent = globalField.path.split('|');
-              extendedInterfaceParent.splice(extendedInterface.length - 1, 1);
+              extendedInterfaceParent.splice(extendedInterfaceParent.length - 1, 1);
               extendedInterfaceParent = extendedInterfaceParent.join('_');
 
               groups.push({
-                extendedInterfaceParent,
+                parent: extendedInterfaceParent,
                 field,
               });
               groups.push({

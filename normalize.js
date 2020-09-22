@@ -437,11 +437,11 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
               _type = 'type ' + newparent + ' implements ' + extendedInterface + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
 
               var extendedInterfaceParent = globalField.path.split('|');
-              extendedInterfaceParent.splice(extendedInterface.length - 1, 1);
+              extendedInterfaceParent.splice(extendedInterfaceParent.length - 1, 1);
               extendedInterfaceParent = extendedInterfaceParent.join('_');
 
               groups.push({
-                extendedInterfaceParent: extendedInterfaceParent,
+                parent: extendedInterfaceParent,
                 field: field
               });
               groups.push({
