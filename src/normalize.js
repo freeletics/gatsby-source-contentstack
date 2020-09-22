@@ -394,7 +394,12 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
 
             _interface = `interface ${globalType} @interface ${JSON.stringify(result.fields).replace(/"/g, '')}`;
             types.push(_interface);
-            type = `type ${newparent} implements Node & ${globalType} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+            type = `type ${newparent} implements ${globalType} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+
+            groups.push({
+              parent,
+              field,
+            });
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
@@ -405,17 +410,30 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
               types.push(_interface);
 
               type = `type ${newparent} implements ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+
+              let extendedInterfaceParent = globalField.path.split('|');
+              extendedInterfaceParent.splice(extendedInterface.length - 1, 1);
+              extendedInterfaceParent = extendedInterfaceParent.join('_');
+
+              groups.push({
+                extendedInterfaceParent,
+                field,
+              });
+              groups.push({
+                parent,
+                field,
+              });
             } else {
               type = `type ${newparent} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+
+              groups.push({
+                parent,
+                field,
+              });
             }
           }
 
           types.push(type);
-
-          groups.push({
-            parent,
-            field,
-          });
 
           // Handles type names for groups inside global field
           newparent = isInsideGlobalField ? extendedInterface : newparent;

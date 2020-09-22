@@ -419,7 +419,12 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
 
             _interface = 'interface ' + globalType + ' @interface ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
             types.push(_interface);
-            _type = 'type ' + newparent + ' implements Node & ' + globalType + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
+            _type = 'type ' + newparent + ' implements ' + globalType + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
+
+            groups.push({
+              parent: parent,
+              field: field
+            });
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
@@ -430,17 +435,30 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
               types.push(_interface);
 
               _type = 'type ' + newparent + ' implements ' + extendedInterface + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
+
+              var extendedInterfaceParent = globalField.path.split('|');
+              extendedInterfaceParent.splice(extendedInterface.length - 1, 1);
+              extendedInterfaceParent = extendedInterfaceParent.join('_');
+
+              groups.push({
+                extendedInterfaceParent: extendedInterfaceParent,
+                field: field
+              });
+              groups.push({
+                parent: parent,
+                field: field
+              });
             } else {
               _type = 'type ' + newparent + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
+
+              groups.push({
+                parent: parent,
+                field: field
+              });
             }
           }
 
           types.push(_type);
-
-          groups.push({
-            parent: parent,
-            field: field
-          });
 
           // Handles type names for groups inside global field
           newparent = isInsideGlobalField ? extendedInterface : newparent;
