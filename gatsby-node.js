@@ -213,8 +213,9 @@ exports.sourceNodes = function () {
               var contentType = contentstackData.contentTypes.find(function (contentType) {
                 return item.content_type_uid === contentType.uid;
               });
-              // Check if entry has global field
-              var normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode);
+              // Passes extra params to create node for global field and its child to support resolving interfaces
+              var interfaceParams = { createContentDigest: createContentDigest, createNode: createNode, contentType: contentType };
+              var normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams);
               var entryNode = processEntry(contentType, normalizedEntry, createNodeId, createContentDigest, typePrefix);
               createNode(entryNode);
             });

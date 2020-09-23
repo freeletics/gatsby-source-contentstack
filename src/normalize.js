@@ -49,10 +49,11 @@ const processEntry = exports.processEntry = (contentType, entry, createNodeId, c
   return nodeData;
 };
 
-exports.normalizeEntry = (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode) => {
+exports.normalizeEntry = (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams) => {
+  interfaceParams = { ...interfaceParams, entry };
   const resolveEntry = {
     ...entry,
-    ...builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, { ...entry }),
+    ...builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams),
   };
   return resolveEntry;
 };
@@ -67,13 +68,13 @@ const makeEntryNodeUid = exports.makeEntryNodeUid = (entry, createNodeId, typePr
   return createNodeId(`${typePrefix.toLowerCase()}-entry-${entry.uid}-${publishedLocale}`);
 };
 
-const normalizeGroup = (field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix) => {
+const normalizeGroup = (field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField) => {
   let groupObj = null;
   if (field.multiple) {
     groupObj = [];
     if (value instanceof Array) {
       value.forEach((groupValue) => {
-        groupObj.push(builtEntry(field.schema, groupValue, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix));
+        groupObj.push(builtEntry(field.schema, groupValue, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField));
       });
     } else {
       // In some cases value is null, this makes graphql treat all the objects as null
@@ -81,11 +82,11 @@ const normalizeGroup = (field, value, locale, entriesNodeIds, assetsNodeIds, cre
       // This also helps to handle when a user changes a group to multiple after initially
       // setting a group to single.. the server passes an object and the previous condition
       // again makes groupObj null
-      groupObj.push(builtEntry(field.schema, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix));
+      groupObj.push(builtEntry(field.schema, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField));
     }
   } else {
     groupObj = {};
-    groupObj = builtEntry(field.schema, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+    groupObj = builtEntry(field.schema, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField);
   }
   return groupObj;
 };
@@ -145,7 +146,7 @@ const getSchemaValue = (obj, key) => {
   return Object.prototype.hasOwnProperty.call(obj, key.uid) ? obj[key.uid] : null;
 };
 
-const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, originalEntry) => {
+const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField) => {
   const entryObj = {};
   schema.forEach((field) => {
     let value = getSchemaValue(entry, field);
@@ -162,19 +163,52 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
       case 'global_field':
         // Create a node for global_field
         if (field.data_type === 'global_field') {
-          entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
-          entryObj[field.uid] = {
-            ...entryObj[field.uid],
-            publish_details: { locale: originalEntry.publish_details.locale },
-            uid: `${originalEntry.uid}${field.uid}`
+          // Tracks if the current object is type global_field or its children
+          isGlobalField = true;
+          // object to track the object type name
+          interfaceParams.globalField = {};
+          interfaceParams.globalField.globalType = `${typePrefix}_${interfaceParams.contentType.uid}_${field.uid}`;
+          interfaceParams.globalField.path = interfaceParams.globalField.globalType; // This field will be appended with field uids separated by pipe character
+
+          let newEntryObj = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField);
+          newEntryObj = {
+            ...newEntryObj,
+            publish_details: { locale: interfaceParams.entry.publish_details.locale },
+            uid: `${interfaceParams.entry.uid}${field.uid}`
           };
-          const globalFieldType = `${typePrefix}_${field.reference_to}`;
-          const entryNode = processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
+          const type = interfaceParams.globalField.globalType;
+          const entryNode = processEntry(contentType, newEntryObj, createNodeId, createContentDigest, typePrefix, type);
           entryObj[field.uid] = entryNode;
           createNode(entryNode);
         } else {
-          entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+          // Creates a node for global field children
+          if (isGlobalField) {
+            // updates object for right type names inside global field
+            interfaceParams.globalField.path = `${interfaceParams.globalField.path}|${field.uid}`;
+
+            let newEntryObj = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField);
+            newEntryObj = {
+              ...newEntryObj,
+              publish_details: { locale: interfaceParams.entry.publish_details.locale },
+              uid: `${interfaceParams.entry.uid}${field.uid}`
+            };
+            // Gets the type name for children of global fields
+            const type = interfaceParams.globalField.path.split('|').join('_');
+
+            const entryNode = processEntry(contentType, newEntryObj, createNodeId, createContentDigest, typePrefix, type);
+            entryObj[field.uid] = entryNode;
+          } else {
+            entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+          }
         }
+        if (globalField) {
+          // Update the type name after recursive call is done
+          let path = interfaceParams.globalField.path.split('|');
+          path.splice(path.length - 1, 1); // Gets path to previous state of globalField.path
+          interfaceParams.globalField.path = path.join('|');
+        }
+        // Tracks if the current object is type global_field or its children
+        isGlobalField = false;
         break;
       case 'blocks':
         entryObj[field.uid] = normalizeModularBlock(field.blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
@@ -405,19 +439,19 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
           if (field.data_type === 'global_field') {
             let globalType = prefix + '_' + field.reference_to;
 
-            _interface = `interface ${globalType} @interface ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+            _interface = `interface ${globalType} @nodeInterface ${JSON.stringify({ ...result.fields, id: 'ID!' }).replace(/"/g, '')}`;
             types.push(_interface);
-            type = `type ${newparent} implements ${globalType} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+            type = `type ${newparent} implements Node & ${globalType} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
 
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
 
               // Creates a common interface for groups inside global_fields, for backwards compatibility
-              _interface = `interface ${extendedInterface} @interface ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+              _interface = `interface ${extendedInterface} @nodeInterface ${JSON.stringify({ ...result.fields, id: 'ID!' }).replace(/"/g, '')}`;
               types.push(_interface);
 
-              type = `type ${newparent} implements ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+              type = `type ${newparent} implements Node & ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
 
             } else {
               type = `type ${newparent} ${JSON.stringify(result.fields).replace(/"/g, '')}`;

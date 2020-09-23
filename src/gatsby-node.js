@@ -141,8 +141,9 @@ exports.sourceNodes = async ({
   syncData.entry_published && syncData.entry_published.forEach((item) => {
     item.content_type_uid = ((item.content_type_uid).replace(/-/g, '_'));
     const contentType = contentstackData.contentTypes.find((contentType) => item.content_type_uid === contentType.uid);
-    // Check if entry has global field
-    const normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode);
+    // Passes extra params to create node for global field and its child to support resolving interfaces
+    const interfaceParams = { createContentDigest, createNode, contentType };
+    const normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams);
     const entryNode = processEntry(contentType, normalizedEntry, createNodeId, createContentDigest, typePrefix);
     createNode(entryNode);
   });
