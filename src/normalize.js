@@ -436,14 +436,14 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
 
           if (field.mandatory) {
             if (field.multiple) {
-              fields[field.uid].type = `[${newparent}]!`;
+              fields[field.uid] = `[${newparent}]!`;
             } else {
-              fields[field.uid].type = `${newparent}!`;
+              fields[field.uid] = `${newparent}!`;
             }
           } else if (field.multiple) {
-            fields[field.uid].type = `[${newparent}]`;
+            fields[field.uid] = `[${newparent}]`;
           } else {
-            fields[field.uid].type = `${newparent}`;
+            fields[field.uid] = `${newparent}`;
           }
         }
 
