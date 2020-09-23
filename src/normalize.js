@@ -167,8 +167,7 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
           isGlobalField = true;
           // object to track the object type name
           interfaceParams.globalField = {};
-          interfaceParams.globalField.globalType = `${typePrefix}_${interfaceParams.contentType.uid}_${field.uid}`;
-          interfaceParams.globalField.path = interfaceParams.globalField.globalType; // This field will be appended with field uids separated by pipe character
+          interfaceParams.globalField.path = `${typePrefix}_${interfaceParams.contentType.uid}_${field.uid}`; // This field will be appended with field uids separated by pipe character
 
           let newEntryObj = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField);
           newEntryObj = {
@@ -177,9 +176,9 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
             uid: `${interfaceParams.entry.uid}${field.uid}`
           };
           const type = interfaceParams.globalField.globalType;
-          const entryNode = processEntry(contentType, newEntryObj, createNodeId, createContentDigest, typePrefix, type);
+          const entryNode = processEntry(contentType, newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, type);
           entryObj[field.uid] = entryNode;
-          createNode(entryNode);
+          interfaceParams.createNode(entryNode);
         } else {
           // Creates a node for global field children
           if (isGlobalField) {
@@ -195,8 +194,9 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
             // Gets the type name for children of global fields
             const type = interfaceParams.globalField.path.split('|').join('_');
 
-            const entryNode = processEntry(contentType, newEntryObj, createNodeId, createContentDigest, typePrefix, type);
+            const entryNode = processEntry(contentType, newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, type);
             entryObj[field.uid] = entryNode;
+            interfaceParams.createNode(entryNode);
           } else {
             entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
           }
@@ -413,8 +413,7 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
         // Handles nested modular blocks and groups inside global field
         if (field.data_type === 'global_field') {
           isGlobalField = true;
-          globalField.globalType = prefix + '_' + field.reference_to;
-          globalField.path = globalField.globalType;
+          globalField.path = prefix + '_' + field.reference_to;
           extendedInterface = globalField.path;
         }
         // Updates extendedInterface and globalField.path before recursive call
@@ -437,16 +436,14 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
 
           // Creates an interface for global_field, keeps it independent of content type.
           if (field.data_type === 'global_field') {
-            let globalType = prefix + '_' + field.reference_to;
-
-            _interface = `interface ${globalType} @nodeInterface ${JSON.stringify({ ...result.fields, id: 'ID!' }).replace(/"/g, '')}`;
+            _interface = `interface ${globalField.path} @nodeInterface ${JSON.stringify({ ...result.fields, id: 'ID!' }).replace(/"/g, '')}`;
             types.push(_interface);
-            type = `type ${newparent} implements Node & ${globalType} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
+
+            type = `type ${newparent} implements Node & ${globalField.path} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
 
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
-
               // Creates a common interface for groups inside global_fields, for backwards compatibility
               _interface = `interface ${extendedInterface} @nodeInterface ${JSON.stringify({ ...result.fields, id: 'ID!' }).replace(/"/g, '')}`;
               types.push(_interface);

@@ -183,8 +183,7 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
           isGlobalField = true;
           // object to track the object type name
           interfaceParams.globalField = {};
-          interfaceParams.globalField.globalType = typePrefix + '_' + interfaceParams.contentType.uid + '_' + field.uid;
-          interfaceParams.globalField.path = interfaceParams.globalField.globalType; // This field will be appended with field uids separated by pipe character
+          interfaceParams.globalField.path = typePrefix + '_' + interfaceParams.contentType.uid + '_' + field.uid; // This field will be appended with field uids separated by pipe character
 
           var newEntryObj = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams, isGlobalField);
           newEntryObj = (0, _extends3.default)({}, newEntryObj, {
@@ -192,9 +191,9 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
             uid: '' + interfaceParams.entry.uid + field.uid
           });
           var type = interfaceParams.globalField.globalType;
-          var entryNode = processEntry(contentType, newEntryObj, createNodeId, createContentDigest, typePrefix, type);
+          var entryNode = processEntry(contentType, newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, type);
           entryObj[field.uid] = entryNode;
-          createNode(entryNode);
+          interfaceParams.createNode(entryNode);
         } else {
           // Creates a node for global field children
           if (isGlobalField) {
@@ -209,8 +208,9 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
             // Gets the type name for children of global fields
             var _type = interfaceParams.globalField.path.split('|').join('_');
 
-            var _entryNode = processEntry(contentType, _newEntryObj, createNodeId, createContentDigest, typePrefix, _type);
+            var _entryNode = processEntry(contentType, _newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, _type);
             entryObj[field.uid] = _entryNode;
+            interfaceParams.createNode(_entryNode);
           } else {
             entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
           }
@@ -435,8 +435,7 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
         // Handles nested modular blocks and groups inside global field
         if (field.data_type === 'global_field') {
           isGlobalField = true;
-          globalField.globalType = prefix + '_' + field.reference_to;
-          globalField.path = globalField.globalType;
+          globalField.path = prefix + '_' + field.reference_to;
           extendedInterface = globalField.path;
         }
         // Updates extendedInterface and globalField.path before recursive call
@@ -460,15 +459,13 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
 
           // Creates an interface for global_field, keeps it independent of content type.
           if (field.data_type === 'global_field') {
-            var globalType = prefix + '_' + field.reference_to;
-
-            _interface = 'interface ' + globalType + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, result.fields, { id: 'ID!' })).replace(/"/g, '');
+            _interface = 'interface ' + globalField.path + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, result.fields, { id: 'ID!' })).replace(/"/g, '');
             types.push(_interface);
-            _type2 = 'type ' + newparent + ' implements Node & ' + globalType + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
+
+            _type2 = 'type ' + newparent + ' implements Node & ' + globalField.path + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
-
               // Creates a common interface for groups inside global_fields, for backwards compatibility
               _interface = 'interface ' + extendedInterface + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, result.fields, { id: 'ID!' })).replace(/"/g, '');
               types.push(_interface);
