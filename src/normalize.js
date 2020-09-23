@@ -32,7 +32,7 @@ exports.processAsset = (asset, createNodeId, createContentDigest, typePrefix) =>
   return nodeData;
 };
 
-exports.processEntry = (contentType, entry, createNodeId, createContentDigest, typePrefix, type) => {
+const processEntry = exports.processEntry = (contentType, entry, createNodeId, createContentDigest, typePrefix, type) => {
   const nodeId = makeEntryNodeUid(entry, createNodeId, typePrefix);
   const nodeContent = JSON.stringify(entry);
   const nodeData = {
@@ -52,7 +52,7 @@ exports.processEntry = (contentType, entry, createNodeId, createContentDigest, t
 exports.normalizeEntry = (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode) => {
   const resolveEntry = {
     ...entry,
-    ...builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, {...entry}),
+    ...builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, { ...entry }),
   };
   return resolveEntry;
 };
@@ -169,7 +169,7 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
             uid: `${originalEntry.uid}${field.uid}`
           };
           const globalFieldType = `${typePrefix}_${field.reference_to}`;
-          const entryNode = this.processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
+          const entryNode = processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
           entryObj[field.uid] = entryNode;
           createNode(entryNode);
         } else {

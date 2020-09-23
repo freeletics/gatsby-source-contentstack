@@ -50,7 +50,7 @@ exports.processAsset = function (asset, createNodeId, createContentDigest, typeP
   return nodeData;
 };
 
-exports.processEntry = function (contentType, entry, createNodeId, createContentDigest, typePrefix, type) {
+var processEntry = exports.processEntry = function (contentType, entry, createNodeId, createContentDigest, typePrefix, type) {
   var nodeId = makeEntryNodeUid(entry, createNodeId, typePrefix);
   var nodeContent = (0, _stringify2.default)(entry);
   var nodeData = (0, _extends3.default)({}, entry, {
@@ -184,7 +184,7 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
             uid: '' + originalEntry.uid + field.uid
           });
           var globalFieldType = typePrefix + '_' + field.reference_to;
-          var entryNode = undefined.processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
+          var entryNode = processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
           entryObj[field.uid] = entryNode;
           createNode(entryNode);
         } else {
