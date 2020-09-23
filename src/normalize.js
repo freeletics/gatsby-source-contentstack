@@ -240,10 +240,18 @@ const buildBlockCustomSchema = (blocks, types, references, groups, parent, prefi
       }
     }
     if (Object.keys(fields).length > 0) {
-      const _interface = `interface ${extendedInterface} @nodeInterface ${JSON.stringify({ ...fields, id: 'ID!' }).replace(/"/g, '')}`;
-      types.push(_interface);
 
-      const type = `type ${newparent} implements Node & ${extendedInterface} ${JSON.stringify(fields).replace(/"/g, '')}`;
+      let type;
+
+      if (isGlobalField) {
+        const _interface = `interface ${extendedInterface} @nodeInterface ${JSON.stringify({ ...fields, id: 'ID!' }).replace(/"/g, '')}`;
+        types.push(_interface);
+
+        type = `type ${newparent} implements Node & ${extendedInterface} ${JSON.stringify(fields).replace(/"/g, '')}`;
+      } else {
+        type = `type ${newparent} ${JSON.stringify(fields).replace(/"/g, '')}`;
+      }
+
       types.push(type);
 
       blockFields[block.uid] = isGlobalField ? extendedInterface : newparent;

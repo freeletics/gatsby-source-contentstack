@@ -253,10 +253,18 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
       }
     }
     if ((0, _keys2.default)(fields).length > 0) {
-      var _interface = 'interface ' + extendedInterface + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, fields, { id: 'ID!' })).replace(/"/g, '');
-      types.push(_interface);
 
-      var type = 'type ' + newparent + ' implements Node & ' + extendedInterface + ' ' + (0, _stringify2.default)(fields).replace(/"/g, '');
+      var type = void 0;
+
+      if (isGlobalField) {
+        var _interface = 'interface ' + extendedInterface + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, fields, { id: 'ID!' })).replace(/"/g, '');
+        types.push(_interface);
+
+        type = 'type ' + newparent + ' implements Node & ' + extendedInterface + ' ' + (0, _stringify2.default)(fields).replace(/"/g, '');
+      } else {
+        type = 'type ' + newparent + ' ' + (0, _stringify2.default)(fields).replace(/"/g, '');
+      }
+
       types.push(type);
 
       blockFields[block.uid] = isGlobalField ? extendedInterface : newparent;
