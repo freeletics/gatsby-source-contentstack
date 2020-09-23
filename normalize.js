@@ -237,12 +237,18 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
 var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, references, groups, parent, prefix, globalField, extendedInterface, isGlobalField) {
 
   var blockFields = {};
+
   var blockType = 'type ' + parent + ' {';
 
   blocks.forEach(function (block) {
 
     var newparent = parent.concat(block.uid);
-    blockType = blockType.concat(block.uid + ' : ' + newparent + ' ');
+
+    if (isGlobalField) {
+      blockType = blockType.concat(block.uid + ' : ' + extendedInterface);
+    } else {
+      blockType = blockType.concat(block.uid + ' : ' + newparent + ' ');
+    }
 
     var _buildCustomSchema = buildCustomSchema(block.schema, types, references, groups, newparent, prefix, globalField, extendedInterface, isGlobalField),
         fields = _buildCustomSchema.fields;
@@ -256,6 +262,7 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
 
       var type = void 0;
 
+      // Handles condition when modular block is nested inside global field
       if (isGlobalField) {
         var _interface = 'interface ' + extendedInterface + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, fields, { id: 'ID!' })).replace(/"/g, '');
         types.push(_interface);

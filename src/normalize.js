@@ -224,12 +224,18 @@ const buildBlockCustomSchema = (blocks, types, references, groups, parent, prefi
   globalField, extendedInterface, isGlobalField) => {
 
   const blockFields = {};
+
   let blockType = `type ${parent} {`;
 
   blocks.forEach((block) => {
 
     let newparent = parent.concat(block.uid);
-    blockType = blockType.concat(`${block.uid} : ${newparent} `);
+
+    if (isGlobalField) {
+      blockType = blockType.concat(`${block.uid} : ${extendedInterface}`);
+    } else {
+      blockType = blockType.concat(`${block.uid} : ${newparent} `);
+    }
 
     const { fields } = buildCustomSchema(block.schema, types, references, groups, newparent, prefix,
       globalField, extendedInterface, isGlobalField);
@@ -243,6 +249,7 @@ const buildBlockCustomSchema = (blocks, types, references, groups, parent, prefi
 
       let type;
 
+      // Handles condition when modular block is nested inside global field
       if (isGlobalField) {
         const _interface = `interface ${extendedInterface} @nodeInterface ${JSON.stringify({ ...fields, id: 'ID!' }).replace(/"/g, '')}`;
         types.push(_interface);
