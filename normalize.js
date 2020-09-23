@@ -190,8 +190,8 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
             publish_details: { locale: interfaceParams.entry.publish_details.locale },
             uid: '' + interfaceParams.entry.uid + field.uid
           });
-          var type = interfaceParams.globalField.globalType;
-          var entryNode = processEntry(contentType, newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, type);
+          var type = interfaceParams.globalField.path;
+          var entryNode = processEntry(interfaceParams.contentType, newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, type);
           entryObj[field.uid] = entryNode;
           interfaceParams.createNode(entryNode);
         } else {
@@ -208,21 +208,21 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
             // Gets the type name for children of global fields
             var _type = interfaceParams.globalField.path.split('|').join('_');
 
-            var _entryNode = processEntry(contentType, _newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, _type);
+            var _entryNode = processEntry(interfaceParams.contentType, _newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, _type);
             entryObj[field.uid] = _entryNode;
             interfaceParams.createNode(_entryNode);
           } else {
             entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
           }
         }
-        if (globalField) {
+        if (isGlobalField) {
           // Update the type name after recursive call is done
           var path = interfaceParams.globalField.path.split('|');
           path.splice(path.length - 1, 1); // Gets path to previous state of globalField.path
           interfaceParams.globalField.path = path.join('|');
+          // Tracks if the current object is type global_field or its children
+          isGlobalField = false;
         }
-        // Tracks if the current object is type global_field or its children
-        isGlobalField = false;
         break;
       case 'blocks':
         entryObj[field.uid] = normalizeModularBlock(field.blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
@@ -240,6 +240,7 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
   var blockType = 'type ' + parent + ' {';
 
   blocks.forEach(function (block) {
+
     var newparent = parent.concat(block.uid);
     blockType = blockType.concat(block.uid + ' : ' + newparent + ' ');
 
@@ -252,9 +253,13 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
       }
     }
     if ((0, _keys2.default)(fields).length > 0) {
-      var type = 'type ' + newparent + ' ' + (0, _stringify2.default)(fields).replace(/"/g, '');
+      var _interface = 'interface ' + extendedInterface + ' @nodeInterface ' + (0, _stringify2.default)((0, _extends3.default)({}, fields, { id: 'ID!' })).replace(/"/g, '');
+      types.push(_interface);
+
+      var type = 'type ' + newparent + ' implements Node & ' + extendedInterface + ' ' + (0, _stringify2.default)(fields).replace(/"/g, '');
       types.push(type);
-      blockFields[block.uid] = '' + newparent;
+
+      blockFields[block.uid] = isGlobalField ? extendedInterface : newparent;
     }
   });
   blockType = blockType.concat('}');
@@ -516,7 +521,7 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
         if (extendedInterface) {
           globalField.path = globalField.path + '|' + field.uid;
           extendedInterface = globalField.path.split('|').join('_');
-          blockparent = extendedInterface;
+          // blockparent = extendedInterface;
         }
 
         var blockType = buildBlockCustomSchema(field.blocks, types, references, groups, blockparent, prefix, globalField, extendedInterface, isGlobalField);
