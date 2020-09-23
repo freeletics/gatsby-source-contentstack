@@ -458,14 +458,14 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
 
           if (field.mandatory) {
             if (field.multiple) {
-              fields[field.uid].type = '[' + newparent + ']!';
+              fields[field.uid] = '[' + newparent + ']!';
             } else {
-              fields[field.uid].type = newparent + '!';
+              fields[field.uid] = newparent + '!';
             }
           } else if (field.multiple) {
-            fields[field.uid].type = '[' + newparent + ']';
+            fields[field.uid] = '[' + newparent + ']';
           } else {
-            fields[field.uid].type = '' + newparent;
+            fields[field.uid] = '' + newparent;
           }
         }
 
