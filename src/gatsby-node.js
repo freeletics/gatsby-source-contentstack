@@ -141,7 +141,8 @@ exports.sourceNodes = async ({
   syncData.entry_published && syncData.entry_published.forEach((item) => {
     item.content_type_uid = ((item.content_type_uid).replace(/-/g, '_'));
     const contentType = contentstackData.contentTypes.find((contentType) => item.content_type_uid === contentType.uid);
-    const normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+    // Check if entry has global field
+    const normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode);
     const entryNode = processEntry(contentType, normalizedEntry, createNodeId, createContentDigest, typePrefix);
     createNode(entryNode);
   });

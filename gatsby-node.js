@@ -213,7 +213,8 @@ exports.sourceNodes = function () {
               var contentType = contentstackData.contentTypes.find(function (contentType) {
                 return item.content_type_uid === contentType.uid;
               });
-              var normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+              // Check if entry has global field
+              var normalizedEntry = normalizeEntry(contentType, item.data, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode);
               var entryNode = processEntry(contentType, normalizedEntry, createNodeId, createContentDigest, typePrefix);
               createNode(entryNode);
             });

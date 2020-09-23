@@ -50,7 +50,7 @@ exports.processAsset = function (asset, createNodeId, createContentDigest, typeP
   return nodeData;
 };
 
-exports.processEntry = function (contentType, entry, createNodeId, createContentDigest, typePrefix) {
+exports.processEntry = function (contentType, entry, createNodeId, createContentDigest, typePrefix, type) {
   var nodeId = makeEntryNodeUid(entry, createNodeId, typePrefix);
   var nodeContent = (0, _stringify2.default)(entry);
   var nodeData = (0, _extends3.default)({}, entry, {
@@ -58,7 +58,7 @@ exports.processEntry = function (contentType, entry, createNodeId, createContent
     parent: null,
     children: [],
     internal: {
-      type: typePrefix + '_' + contentType.uid,
+      type: type || typePrefix + '_' + contentType.uid,
       content: nodeContent,
       contentDigest: createContentDigest(nodeContent)
     }
@@ -66,8 +66,8 @@ exports.processEntry = function (contentType, entry, createNodeId, createContent
   return nodeData;
 };
 
-exports.normalizeEntry = function (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix) {
-  var resolveEntry = (0, _extends3.default)({}, entry, builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix));
+exports.normalizeEntry = function (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode) {
+  var resolveEntry = (0, _extends3.default)({}, entry, builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, (0, _extends3.default)({}, entry)));
   return resolveEntry;
 };
 
@@ -161,7 +161,7 @@ var getSchemaValue = function getSchemaValue(obj, key) {
   return Object.prototype.hasOwnProperty.call(obj, key.uid) ? obj[key.uid] : null;
 };
 
-var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix) {
+var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, originalEntry) {
   var entryObj = {};
   schema.forEach(function (field) {
     var value = getSchemaValue(entry, field);
@@ -176,7 +176,20 @@ var builtEntry = function builtEntry(schema, entry, locale, entriesNodeIds, asse
         break;
       case 'group':
       case 'global_field':
-        entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+        // Create a node for global_field
+        if (field.data_type === 'global_field') {
+          entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+          entryObj[field.uid] = (0, _extends3.default)({}, entryObj[field.uid], {
+            publish_details: { locale: originalEntry.publish_details.locale },
+            uid: '' + originalEntry.uid + field.uid
+          });
+          var globalFieldType = typePrefix + '_' + field.reference_to;
+          var entryNode = undefined.processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
+          entryObj[field.uid] = entryNode;
+          createNode(entryNode);
+        } else {
+          entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+        }
         break;
       case 'blocks':
         entryObj[field.uid] = normalizeModularBlock(field.blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
@@ -386,7 +399,6 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
       case 'global_field':
         var newparent = parent.concat('_', field.uid);
 
-        var isInsideGlobalField = false; // Tracks if iterating inside global field
         // Handles nested modular blocks and groups inside global field
         if (field.data_type === 'global_field') {
           isGlobalField = true;
@@ -420,59 +432,40 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
             _interface = 'interface ' + globalType + ' @interface ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
             types.push(_interface);
             _type = 'type ' + newparent + ' implements ' + globalType + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
-
-            groups.push({
-              parent: parent,
-              field: field
-            });
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
-              isInsideGlobalField = true;
 
               // Creates a common interface for groups inside global_fields, for backwards compatibility
               _interface = 'interface ' + extendedInterface + ' @interface ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
               types.push(_interface);
 
               _type = 'type ' + newparent + ' implements ' + extendedInterface + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
-
-              var extendedInterfaceParent = globalField.path.split('|');
-              extendedInterfaceParent.splice(extendedInterfaceParent.length - 1, 1);
-              extendedInterfaceParent = extendedInterfaceParent.join('_');
-
-              groups.push({
-                parent: extendedInterfaceParent,
-                field: field
-              });
-              groups.push({
-                parent: parent,
-                field: field
-              });
             } else {
               _type = 'type ' + newparent + ' ' + (0, _stringify2.default)(result.fields).replace(/"/g, '');
-
-              groups.push({
-                parent: parent,
-                field: field
-              });
             }
           }
 
           types.push(_type);
 
+          groups.push({
+            parent: parent,
+            field: field
+          });
+
           // Handles type names for groups inside global field
-          newparent = isInsideGlobalField ? extendedInterface : newparent;
+          newparent = isGlobalField ? extendedInterface : newparent;
 
           if (field.mandatory) {
             if (field.multiple) {
-              fields[field.uid] = '[' + newparent + ']!';
+              fields[field.uid].type = '[' + newparent + ']!';
             } else {
-              fields[field.uid] = newparent + '!';
+              fields[field.uid].type = newparent + '!';
             }
           } else if (field.multiple) {
-            fields[field.uid] = '[' + newparent + ']';
+            fields[field.uid].type = '[' + newparent + ']';
           } else {
-            fields[field.uid] = '' + newparent;
+            fields[field.uid].type = '' + newparent;
           }
         }
 
@@ -484,7 +477,6 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
           extendedInterface.splice(extendedInterface.length - 1, 1); // Removes last element
           globalField.path = extendedInterface.join('|'); // gets globalField.path previous state as last recursive call is done
           extendedInterface = extendedInterface.join('_'); // gets extendedInterface to previous state.
-          isInsideGlobalField = false; // tracks if the current iteration is inside nested child of global fields
         }
 
         break;

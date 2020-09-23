@@ -32,7 +32,7 @@ exports.processAsset = (asset, createNodeId, createContentDigest, typePrefix) =>
   return nodeData;
 };
 
-exports.processEntry = (contentType, entry, createNodeId, createContentDigest, typePrefix) => {
+exports.processEntry = (contentType, entry, createNodeId, createContentDigest, typePrefix, type) => {
   const nodeId = makeEntryNodeUid(entry, createNodeId, typePrefix);
   const nodeContent = JSON.stringify(entry);
   const nodeData = {
@@ -41,7 +41,7 @@ exports.processEntry = (contentType, entry, createNodeId, createContentDigest, t
     parent: null,
     children: [],
     internal: {
-      type: `${typePrefix}_${contentType.uid}`,
+      type: type || `${typePrefix}_${contentType.uid}`,
       content: nodeContent,
       contentDigest: createContentDigest(nodeContent),
     },
@@ -49,10 +49,10 @@ exports.processEntry = (contentType, entry, createNodeId, createContentDigest, t
   return nodeData;
 };
 
-exports.normalizeEntry = (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix) => {
+exports.normalizeEntry = (contentType, entry, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, createContentDigest, createNode) => {
   const resolveEntry = {
     ...entry,
-    ...builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix),
+    ...builtEntry(contentType.schema, entry, entry.publish_details.locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, {...entry}),
   };
   return resolveEntry;
 };
@@ -145,7 +145,7 @@ const getSchemaValue = (obj, key) => {
   return Object.prototype.hasOwnProperty.call(obj, key.uid) ? obj[key.uid] : null;
 };
 
-const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix) => {
+const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, contentType, createContentDigest, createNode, originalEntry) => {
   const entryObj = {};
   schema.forEach((field) => {
     let value = getSchemaValue(entry, field);
@@ -160,7 +160,21 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
         break;
       case 'group':
       case 'global_field':
-        entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+        // Create a node for global_field
+        if (field.data_type === 'global_field') {
+          entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+          entryObj[field.uid] = {
+            ...entryObj[field.uid],
+            publish_details: { locale: originalEntry.publish_details.locale },
+            uid: `${originalEntry.uid}${field.uid}`
+          };
+          const globalFieldType = `${typePrefix}_${field.reference_to}`;
+          const entryNode = this.processEntry(contentType, entryObj[field.uid], createNodeId, createContentDigest, typePrefix, globalFieldType);
+          entryObj[field.uid] = entryNode;
+          createNode(entryNode);
+        } else {
+          entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+        }
         break;
       case 'blocks':
         entryObj[field.uid] = normalizeModularBlock(field.blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
@@ -362,7 +376,6 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
       case 'global_field':
         let newparent = parent.concat('_', field.uid);
 
-        let isInsideGlobalField = false; // Tracks if iterating inside global field
         // Handles nested modular blocks and groups inside global field
         if (field.data_type === 'global_field') {
           isGlobalField = true;
@@ -396,14 +409,9 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
             types.push(_interface);
             type = `type ${newparent} implements ${globalType} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
 
-            groups.push({
-              parent,
-              field,
-            });
           } else {
             // Checks groups inside global fields
             if (isGlobalField) {
-              isInsideGlobalField = true;
 
               // Creates a common interface for groups inside global_fields, for backwards compatibility
               _interface = `interface ${extendedInterface} @interface ${JSON.stringify(result.fields).replace(/"/g, '')}`;
@@ -411,43 +419,31 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
 
               type = `type ${newparent} implements ${extendedInterface} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
 
-              let extendedInterfaceParent = globalField.path.split('|');
-              extendedInterfaceParent.splice(extendedInterfaceParent.length - 1, 1);
-              extendedInterfaceParent = extendedInterfaceParent.join('_');
-
-              groups.push({
-                parent: extendedInterfaceParent,
-                field,
-              });
-              groups.push({
-                parent,
-                field,
-              });
             } else {
               type = `type ${newparent} ${JSON.stringify(result.fields).replace(/"/g, '')}`;
-
-              groups.push({
-                parent,
-                field,
-              });
             }
           }
 
           types.push(type);
 
+          groups.push({
+            parent,
+            field,
+          });
+
           // Handles type names for groups inside global field
-          newparent = isInsideGlobalField ? extendedInterface : newparent;
+          newparent = isGlobalField ? extendedInterface : newparent;
 
           if (field.mandatory) {
             if (field.multiple) {
-              fields[field.uid] = `[${newparent}]!`;
+              fields[field.uid].type = `[${newparent}]!`;
             } else {
-              fields[field.uid] = `${newparent}!`;
+              fields[field.uid].type = `${newparent}!`;
             }
           } else if (field.multiple) {
-            fields[field.uid] = `[${newparent}]`;
+            fields[field.uid].type = `[${newparent}]`;
           } else {
-            fields[field.uid] = `${newparent}`;
+            fields[field.uid].type = `${newparent}`;
           }
         }
 
@@ -459,7 +455,6 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
           extendedInterface.splice(extendedInterface.length - 1, 1); // Removes last element
           globalField.path = extendedInterface.join('|'); // gets globalField.path previous state as last recursive call is done
           extendedInterface = extendedInterface.join('_'); // gets extendedInterface to previous state.
-          isInsideGlobalField = false; // tracks if the current iteration is inside nested child of global fields
         }
 
         break;
