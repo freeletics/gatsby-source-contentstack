@@ -91,7 +91,7 @@ const normalizeGroup = (field, value, locale, entriesNodeIds, assetsNodeIds, cre
   return groupObj;
 };
 
-const normalizeModularBlock = (blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix) => {
+const normalizeModularBlock = (blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams) => {
   const modularBlocksObj = [];
   if (value) {
     value.map((block) => {
@@ -102,7 +102,27 @@ const normalizeModularBlock = (blocks, value, locale, entriesNodeIds, assetsNode
           return;
         }
         const blockObj = {};
-        blockObj[key] = builtEntry(blockSchema[0].schema, block[key], locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+
+        // Creates a node for modular_blocks inside global_field
+        if (interfaceParams.globalField && interfaceParams.globalField.path) {
+          // updates right type names inside global field
+          interfaceParams.globalField.path = `${interfaceParams.globalField.path}|${field.uid}`;
+
+          let newEntryObj = builtEntry(blockSchema[0].schema, block[key], locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams);
+          newEntryObj = {
+            ...newEntryObj,
+            publish_details: { locale: interfaceParams.entry.publish_details.locale },
+            uid: `${interfaceParams.entry.uid}${key}`
+          };
+          // Gets the type name
+          const type = interfaceParams.globalField.path.split('|').join('');
+          const entryNode = processEntry(interfaceParams.contentType, newEntryObj, createNodeId, interfaceParams.createContentDigest, typePrefix, type);
+          blockObj[key] = entryNode;
+          interfaceParams.createNode(entryNode);
+        } else {
+          blockObj[key] = builtEntry(blockSchema[0].schema, block[key], locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams);
+        }
+
         modularBlocksObj.push(blockObj);
       });
     });
@@ -146,7 +166,7 @@ const getSchemaValue = (obj, key) => {
   return Object.prototype.hasOwnProperty.call(obj, key.uid) ? obj[key.uid] : null;
 };
 
-const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams) => {
+const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams = {}) => {
   const entryObj = {};
   schema.forEach((field) => {
     let value = getSchemaValue(entry, field);
@@ -179,9 +199,9 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
           entryObj[field.uid] = entryNode;
           interfaceParams.createNode(entryNode);
         } else {
-          // Creates a node for global field children
-          if (interfaceParams && interfaceParams.globalField && interfaceParams.globalField.path) {
-            // updates object for right type names inside global field
+          // Creates a node for groups inside global field
+          if (interfaceParams.globalField && interfaceParams.globalField.path) {
+            // updates type names inside global field
             interfaceParams.globalField.path = `${interfaceParams.globalField.path}|${field.uid}`;
 
             let newEntryObj = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams);
@@ -200,7 +220,8 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
             entryObj[field.uid] = normalizeGroup(field, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
           }
         }
-        if (interfaceParams && interfaceParams.globalField && interfaceParams.globalField.path) {
+
+        if (interfaceParams.globalField && interfaceParams.globalField.path) {
           // Update the type name after recursive call is done
           let path = interfaceParams.globalField.path.split('|');
           path.splice(path.length - 1, 1); // Gets path to previous state of globalField.path
@@ -208,7 +229,7 @@ const builtEntry = (schema, entry, locale, entriesNodeIds, assetsNodeIds, create
         }
         break;
       case 'blocks':
-        entryObj[field.uid] = normalizeModularBlock(field.blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix);
+        entryObj[field.uid] = normalizeModularBlock(field.blocks, value, locale, entriesNodeIds, assetsNodeIds, createNodeId, typePrefix, interfaceParams);
         break;
       default:
         entryObj[field.uid] = value;
@@ -527,6 +548,9 @@ const buildCustomSchema = exports.buildCustomSchema = (schema, types, references
         const blockType = buildBlockCustomSchema(field.blocks, types, references, groups, blockparent, prefix, globalField);
 
         types.push(blockType);
+
+        blockparent = globalField.extendedInterface || blockparent;
+
         if (field.mandatory) {
           if (field.multiple) {
             fields[field.uid] = `[${blockparent}]!`;
