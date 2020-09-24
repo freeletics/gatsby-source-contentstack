@@ -236,8 +236,15 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
 
 
   var blockFields = {};
+  var blockType = void 0,
+      blockInterface = void 0;
 
-  var blockType = 'type ' + parent + ' {';
+  if (globalField.extendedInterface) {
+    blockInterface = 'interface ' + globalField.extendedInterface + ' @nodeInterface {id: ID! '; // Space in the end is required
+    blockType = 'type ' + parent + ' implements Node & ' + globalField.extendedInterface + ' {';
+  } else {
+    blockType = 'type ' + parent + ' {';
+  }
 
   blocks.forEach(function (block) {
 
@@ -246,7 +253,9 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
 
     if (globalField.extendedInterface) {
       extendedInterfaceBlock = globalField.extendedInterface.concat(block.uid);
-      blockType = blockType.concat(block.uid + ' : ' + extendedInterfaceBlock);
+      var blockString = block.uid + ' : ' + extendedInterfaceBlock + ' ';
+      blockInterface = blockInterface.concat(blockString);
+      blockType = blockType.concat(blockString);
     } else {
       blockType = blockType.concat(block.uid + ' : ' + newparent + ' ');
     }
@@ -278,6 +287,12 @@ var buildBlockCustomSchema = function buildBlockCustomSchema(blocks, types, refe
       blockFields[block.uid] = globalField.extendedInterface ? globalField.extendedInterface : newparent;
     }
   });
+
+  if (globalField.extendedInterface) {
+    blockInterface = blockInterface.concat('}');
+    types.push(blockInterface);
+  }
+
   blockType = blockType.concat('}');
   return blockType;
 };
@@ -459,7 +474,7 @@ var buildCustomSchema = exports.buildCustomSchema = function (schema, types, ref
         // Updates extendedInterface and globalField.path before recursive call
         if (globalField.extendedInterface && field.data_type !== 'global_field') {
           globalField.path = globalField.path + '|' + field.uid;
-          extendedInterface = globalField.path.split('|').join('_');
+          globalField.extendedInterface = globalField.path.split('|').join('_');
         }
 
         var result = buildCustomSchema(field.schema, types, references, groups, newparent, prefix, globalField);
