@@ -426,7 +426,7 @@ exports.extendSchemaWithDefaultEntryFields = schema => {
     mandatory: false,
   });
   schema.push({
-    data_type: 'isodate',
+    data_type: 'Date',
     uid: 'updated_at',
     multiple: false,
     mandatory: false,
@@ -438,7 +438,7 @@ exports.extendSchemaWithDefaultEntryFields = schema => {
     mandatory: false,
   });
   schema.push({
-    data_type: 'isodate',
+    data_type: 'Date',
     uid: 'created_at',
     multiple: false,
     mandatory: false,
