@@ -9,7 +9,11 @@ const {
   buildCustomSchema,
   extendSchemaWithDefaultEntryFields,
 } = require('./normalize');
-const {checkIfUnsupportedFormat,SUPPORTED_FILES_COUNT, IMAGE_REGEXP}=require('./utils');
+const {
+  checkIfUnsupportedFormat,
+  SUPPORTED_FILES_COUNT,
+  IMAGE_REGEXP,
+} = require('./utils');
 
 const { fetchData, fetchContentTypes } = require('./fetch');
 
@@ -28,12 +32,10 @@ exports.onPreBootstrap = ({ reporter }) => {
   }
 };
 
-exports.createSchemaCustomization = async ({
-  cache,
-  actions,
-  schema,
-}, configOptions) => {
-
+exports.createSchemaCustomization = async (
+  { cache, actions, schema },
+  configOptions
+) => {
   let contentTypes;
 
   const typePrefix = configOptions.type_prefix || 'Contentstack';
@@ -45,7 +47,7 @@ exports.createSchemaCustomization = async ({
   }
   if (configOptions.enableSchemaGeneration) {
     const { createTypes } = actions;
-    contentTypes.forEach(contentType => {
+    contentTypes.forEach((contentType) => {
       const contentTypeUid = contentType.uid.replace(/-/g, '_');
       const name = `${typePrefix}_${contentTypeUid}`;
       const extendedSchema = extendSchemaWithDefaultEntryFields(
@@ -72,7 +74,7 @@ exports.createSchemaCustomization = async ({
           name,
           fields: result.fields,
           interfaces: ['Node'],
-          extensions: {infer: true}
+          extensions: { infer: true },
         }),
       ];
       result.types = result.types.concat(typeDefs);
@@ -100,28 +102,24 @@ exports.createSchemaCustomization = async ({
   }
 };
 
-exports.sourceNodes = async ({
-  cache,
-  actions,
-  getNode,
-  getNodes,
-  createNodeId,
-  store,
-  reporter,
-  createContentDigest,
-  getNodesByType,
-  getCache,
-}, configOptions) => {
-  const {
-    createNode,
-    deleteNode,
-    touchNode,
-    setPluginStatus,
-  } = actions;
+exports.sourceNodes = async (
+  {
+    cache,
+    actions,
+    getNode,
+    getNodes,
+    createNodeId,
+    store,
+    reporter,
+    createContentDigest,
+    getNodesByType,
+    getCache,
+  },
+  configOptions
+) => {
+  const { createNode, deleteNode, touchNode, setPluginStatus } = actions;
   let syncToken;
-  const {
-    status,
-  } = store.getState();
+  const { status } = store.getState();
 
   // use a custom type prefix if specified
   const typePrefix = configOptions.type_prefix || 'Contentstack';
@@ -154,10 +152,10 @@ exports.sourceNodes = async ({
   const assetsNodeIds = new Set();
 
   const existingNodes = getNodes().filter(
-    n => n.internal.owner === 'gatsby-source-contentstack'
+    (n) => n.internal.owner === 'gatsby-source-contentstack'
   );
 
-  existingNodes.forEach(n => {
+  existingNodes.forEach((n) => {
     if (
       n.internal.type !== `${typePrefix}ContentTypes` &&
       n.internal.type !== `${typePrefix}_assets`
@@ -177,47 +175,47 @@ exports.sourceNodes = async ({
   });
 
   syncData.entry_published &&
-    syncData.entry_published.forEach(item => {
+    syncData.entry_published.forEach((item) => {
       const entryNodeId = makeEntryNodeUid(item.data, createNodeId, typePrefix);
       entriesNodeIds.add(entryNodeId);
     });
 
   let countOfSupportedFormatFiles = 0;
-  syncData.asset_published && syncData.asset_published.forEach(function (item) {
-    /**
-     * Get the count of assets (images), filtering out svg and gif format,
-     * as these formats are not supported by gatsby-image.
-     * We need the right count to render in progress bar,
-     * which will show progress for downloading remote files.
-     */
-    if (configOptions.downloadImages) {
-      // Filter the images from the assets
-      const regexp = IMAGE_REGEXP;
-      let matches;
-      let isUnsupportedExt;
-      try {
-        matches = regexp.exec(item.data.url);
-        isUnsupportedExt = checkIfUnsupportedFormat(item.data.url);
+  syncData.asset_published &&
+    syncData.asset_published.forEach(function (item) {
+      /**
+       * Get the count of assets (images), filtering out svg and gif format,
+       * as these formats are not supported by gatsby-image.
+       * We need the right count to render in progress bar,
+       * which will show progress for downloading remote files.
+       */
+      if (configOptions.downloadImages) {
+        // Filter the images from the assets
+        const regexp = IMAGE_REGEXP;
+        let matches;
+        let isUnsupportedExt;
+        try {
+          matches = regexp.exec(item.data.url);
+          isUnsupportedExt = checkIfUnsupportedFormat(item.data.url);
 
-        if (matches && !isUnsupportedExt)
-          countOfSupportedFormatFiles++;
-
-      } catch (error) {
-        reporter.panic('Something went wrong. Details: ', error);
+          if (matches && !isUnsupportedExt) countOfSupportedFormatFiles++;
+        } catch (error) {
+          reporter.panic('Something went wrong. Details: ', error);
+        }
       }
-    }
-    var entryNodeId = makeAssetNodeUid(item.data, createNodeId, typePrefix);
-    assetsNodeIds.add(entryNodeId);
-  });
+      var entryNodeId = makeAssetNodeUid(item.data, createNodeId, typePrefix);
+      assetsNodeIds.add(entryNodeId);
+    });
   // Cache the found count
- configOptions.downloadImages && await cache.set(SUPPORTED_FILES_COUNT, countOfSupportedFormatFiles);
+  configOptions.downloadImages &&
+    (await cache.set(SUPPORTED_FILES_COUNT, countOfSupportedFormatFiles));
   // syncData.asset_published && syncData.asset_published.forEach((item) => {
   //   const entryNodeId = makeAssetNodeUid(item.data, createNodeId, typePrefix);
   //   assetsNodeIds.add(entryNodeId);
   // });
 
   // adding nodes
-  contentstackData.contentTypes.forEach(contentType => {
+  contentstackData.contentTypes.forEach((contentType) => {
     contentType.uid = contentType.uid.replace(/-/g, '_');
     const contentTypeNode = processContentType(
       contentType,
@@ -229,10 +227,10 @@ exports.sourceNodes = async ({
   });
 
   syncData.entry_published &&
-    syncData.entry_published.forEach(item => {
+    syncData.entry_published.forEach((item) => {
       item.content_type_uid = item.content_type_uid.replace(/-/g, '_');
       const contentType = contentstackData.contentTypes.find(
-        contentType => item.content_type_uid === contentType.uid
+        (contentType) => item.content_type_uid === contentType.uid
       );
       const normalizedEntry = normalizeEntry(
         contentType,
@@ -254,7 +252,7 @@ exports.sourceNodes = async ({
     });
 
   syncData.asset_published &&
-    syncData.asset_published.forEach(item => {
+    syncData.asset_published.forEach((item) => {
       const assetNode = processAsset(
         item.data,
         createNodeId,
@@ -266,9 +264,15 @@ exports.sourceNodes = async ({
 
   if (configOptions.downloadImages) {
     try {
-      await downloadAssets({ cache, getCache, createNode, createNodeId, getNodesByType, reporter }, typePrefix, configOptions);
+      await downloadAssets(
+        { cache, getCache, createNode, createNodeId, getNodesByType, reporter },
+        typePrefix,
+        configOptions
+      );
     } catch (error) {
-      reporter.info('Something went wrong while downloading assets. Details: ' + error);
+      reporter.info(
+        'Something went wrong while downloading assets. Details: ' + error
+      );
     }
   }
 
@@ -296,32 +300,32 @@ exports.sourceNodes = async ({
   // deleting nodes
 
   syncData.entry_unpublished &&
-    syncData.entry_unpublished.forEach(item => {
+    syncData.entry_unpublished.forEach((item) => {
       deleteContentstackNodes(item.data, 'entry');
     });
 
   syncData.asset_unpublished &&
-    syncData.asset_unpublished.forEach(item => {
+    syncData.asset_unpublished.forEach((item) => {
       deleteContentstackNodes(item.data, 'asset');
     });
 
   syncData.entry_deleted &&
-    syncData.entry_deleted.forEach(item => {
+    syncData.entry_deleted.forEach((item) => {
       deleteContentstackNodes(item.data, 'entry');
     });
 
   syncData.asset_deleted &&
-    syncData.asset_deleted.forEach(item => {
+    syncData.asset_deleted.forEach((item) => {
       deleteContentstackNodes(item.data, 'asset');
     });
 
   syncData.content_type_deleted &&
-    syncData.content_type_deleted.forEach(item => {
+    syncData.content_type_deleted.forEach((item) => {
       item.content_type_uid = item.content_type_uid.replace(/-/g, '_');
       const sameContentTypeNodes = getNodes().filter(
-        n => n.internal.type === `${typePrefix}_${item.content_type_uid}`
+        (n) => n.internal.type === `${typePrefix}_${item.content_type_uid}`
       );
-      sameContentTypeNodes.forEach(node =>
+      sameContentTypeNodes.forEach((node) =>
         deleteNode({
           node,
         })
@@ -333,43 +337,44 @@ exports.sourceNodes = async ({
 
   // Storing the sync state for the next sync
   const newState = {};
-  newState[
-    `${typePrefix.toLowerCase()}-sync-token-${configOptions.api_key}`
-  ] = nextSyncToken;
+  newState[`${typePrefix.toLowerCase()}-sync-token-${configOptions.api_key}`] =
+    nextSyncToken;
   setPluginStatus(newState);
 };
 
-
 exports.createResolvers = ({ createResolvers }) => {
   const resolvers = {};
-  fileFields.forEach(fileField => {
+  fileFields.forEach((fileField) => {
     resolvers[fileField.parent] = {
       ...resolvers[fileField.parent],
-      ... {      
-      [fileField.field.uid]: {
-        resolve(source, args, context, info) {
-          if (fileField.field.multiple && source[`${fileField.field.uid}___NODE`]) {
+      ...{
+        [fileField.field.uid]: {
+          resolve(source, args, context, info) {
+            if (
+              fileField.field.multiple &&
+              source[`${fileField.field.uid}___NODE`]
+            ) {
               const nodesData = [];
-              
-              source[`${fileField.field.uid}___NODE`].forEach(id => {
-                const existingNode = context.nodeModel.getNodeById({ id })
-                
+
+              source[`${fileField.field.uid}___NODE`].forEach((id) => {
+                const existingNode = context.nodeModel.getNodeById({ id });
+
                 if (existingNode) {
                   nodesData.push(existingNode);
                 }
               });
 
               return nodesData;
-            } else { 
-              const id = source[`${fileField.field.uid}___NODE`]
-              return context.nodeModel.getNodeById({ id })
+            } else {
+              const id = source[`${fileField.field.uid}___NODE`];
+              return context.nodeModel.getNodeById({ id });
             }
+          },
         },
       },
-    }
     };
-  })
-  references.forEach(reference => {
+  });
+  references.forEach((reference) => {
     resolvers[reference.parent] = {
       ...resolvers[reference.parent],
       [reference.uid]: {
@@ -377,11 +382,11 @@ exports.createResolvers = ({ createResolvers }) => {
           if (source[`${reference.uid}___NODE`]) {
             const nodesData = [];
 
-            source[`${reference.uid}___NODE`].forEach(id => {
+            source[`${reference.uid}___NODE`].forEach((id) => {
               const existingNode = context.nodeModel.getNodeById({
-                id 
-              })
-              
+                id,
+              });
+
               if (existingNode) {
                 nodesData.push(existingNode);
               }
@@ -394,12 +399,12 @@ exports.createResolvers = ({ createResolvers }) => {
       },
     };
   });
-  groups.forEach(group => {
+  groups.forEach((group) => {
     resolvers[group.parent] = {
       ...resolvers[group.parent],
       ...{
         [group.field.uid]: {
-          resolve: source => {
+          resolve: (source) => {
             if (
               group.field.multiple &&
               !Array.isArray(source[group.field.uid])
@@ -417,34 +422,53 @@ exports.createResolvers = ({ createResolvers }) => {
 
 exports.pluginOptionsSchema = ({ Joi }) => {
   return Joi.object({
-    api_key: Joi.string().required().description(`API Key is a unique key assigned to each stack.`),
-    delivery_token: Joi.string().required().description(`Delivery Token is a read-only credential.`),
-    environment: Joi.string().required().description(`Environment where you published your data.`),
-    cdn: Joi.string().default(`https://cdn.contentstack.io/v3`).description(`CDN set this to point to other cdn end point. For eg: https://eu-cdn.contentstack.com/v3 `),
-    type_prefix:  Joi.string().default(`Contentstack`).description(`Specify a different prefix for types. This is useful in cases where you have multiple instances of the plugin to be connected to different stacks.`),
-    expediteBuild: Joi.boolean().default(false).description(`expediteBuild set this to either true or false.`),
-    enableSchemaGeneration: Joi.boolean().default(false).description(`Specify true if you want to generate custom schema.`),
-  }).external(validateContentstackAccess)
-}
+    api_key: Joi.string()
+      .required()
+      .description(`API Key is a unique key assigned to each stack.`),
+    delivery_token: Joi.string()
+      .required()
+      .description(`Delivery Token is a read-only credential.`),
+    environment: Joi.string()
+      .required()
+      .description(`Environment where you published your data.`),
+    cdn: Joi.string()
+      .default(`https://cdn.contentstack.io/v3`)
+      .description(
+        `CDN set this to point to other cdn end point. For eg: https://eu-cdn.contentstack.com/v3 `
+      ),
+    type_prefix: Joi.string()
+      .default(`Contentstack`)
+      .description(
+        `Specify a different prefix for types. This is useful in cases where you have multiple instances of the plugin to be connected to different stacks.`
+      ),
+    expediteBuild: Joi.boolean()
+      .default(false)
+      .description(`expediteBuild set this to either true or false.`),
+    enableSchemaGeneration: Joi.boolean()
+      .default(false)
+      .description(`Specify true if you want to generate custom schema.`),
+  }).external(validateContentstackAccess);
+};
 
+const validateContentstackAccess = async (pluginOptions) => {
+  if (process.env.NODE_ENV === `test`) return undefined;
 
-const validateContentstackAccess = async pluginOptions => {
-  if (process.env.NODE_ENV === `test`) return undefined
-  
-  let host = pluginOptions.cdn ? pluginOptions.cdn : 'https://cdn.contentstack.io/v3';
+  let host = pluginOptions.cdn
+    ? pluginOptions.cdn
+    : 'https://cdn.contentstack.io/v3';
   await fetch(`${host}/content_types?include_count=false`, {
     headers: {
-      "api_key" : `${pluginOptions.api_key}`,
-      "access_token": `${pluginOptions.delivery_token}`,
+      api_key: `${pluginOptions.api_key}`,
+      access_token: `${pluginOptions.delivery_token}`,
     },
   })
-    .then(res => res.ok)
-    .then(ok => {
+    .then((res) => res.ok)
+    .then((ok) => {
       if (!ok)
         throw new Error(
           `Cannot access Contentstack with api_key=${pluginOptions.api_key} & delivery_token=${pluginOptions.delivery_token}.`
-        )
-    })
+        );
+    });
 
-  return undefined
-}
+  return undefined;
+};
